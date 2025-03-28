@@ -1,3 +1,4 @@
+from pandas.core.methods.describe import describe_timestamp_as_categorical_1d
 import streamlit as st
 import pandas as pd
 import pydeck
@@ -28,7 +29,67 @@ def big_metric(label, value, delta=None):
     """,
         unsafe_allow_html=True,
     )
-    st.metric(label="", value=value, delta=delta)
+    st.metric(label=label, value=value, delta=delta)
+
+
+def big_metric_box(
+    label,
+    value,
+    delta=None,
+    label_size="28px",
+    value_size="32px",
+    box_color="#a08f73",
+    box_padding="10px",
+    border_radius="8px",
+    border_width="1px",
+    box_width="fit-content",
+):
+    """
+    Creates a metric with large text and boxed value
+
+    Parameters:
+    - label: Metric label text
+    - value: Metric value to display
+    - delta: Delta value (optional)
+    - label_size: Font size for label
+    - value_size: Font size for value
+    - box_color: Background color for value box
+    - box_padding: Padding inside box
+    - border_radius: Border radius for rounded corners
+    - border_width: Border thickness
+    """
+    st.markdown(
+        f"""
+    <style>
+    .big-metric-box {{
+        border: {border_width} solid #e6e6e6;
+        border-radius: {border_radius};
+        padding: {box_padding};
+        background-color: {box_color};
+        margin-bottom: 10px;
+        width: {box_width};
+        display: inline-block;
+    }}
+    .big-metric-label {{
+        font-size: {label_size} !important;
+        font-weight: 600 !important;
+    }}
+    .big-metric-value {{
+        font-size: {value_size} !important;
+        font-weight: 700 !important;
+    }}
+    </style>
+    
+    <div class="big-metric-label">{label}</div>
+    <div class="big-metric-box">
+        <div class="big-metric-value">{value}</div>
+    </div>
+    """,
+        unsafe_allow_html=True,
+    )
+
+    if delta is not None:
+        st.metric(label=" ", value="", delta=delta)
 
 
 def paragraph(text, font_size=24, line_height=1.6):
@@ -48,14 +109,21 @@ def paragraph(text, font_size=24, line_height=1.6):
 
 df_migration = pd.read_csv("data/unhcr.csv")
 
-
-# st.dataframe(df_migration)
-st.title(
+# Title of Page
+st.title("Migration Crisis in Africa as reported by UNHCR")
+st.subheader(
     "Key Statistics for Refugees and Asylum-Seekers in Southern, East and Horn of Africa"
 )
+st.title("Visualization of Migration data from African Countries as collected by UNHCR")
+
+
+# st.dataframe(df_migration)
+
 paragraph(
     "The data in this page is aggregated from UNHCR dataset which is available at https://data.humdata.org/dataset/unhcr-situations"
 )
+st.markdown("<br>", unsafe_allow_html=True)  # Single line break
+st.markdown("<br>", unsafe_allow_html=True)  # Single line break
 total_migrants = df_migration.loc[df_migration["Individuals"] > 0, "Individuals"].sum()
 total_refugees = df_migration.loc[
     df_migration["Population type"] == "Refugees", "Individuals"
@@ -67,11 +135,13 @@ total_asylum_seekers = df_migration.loc[
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    big_metric(label="Total Refugees and Asylum Seekers", value=f"{total_migrants:,}")
+    big_metric_box(
+        label="Total Refugees and Asylum Seekers", value=f"{total_migrants:,}"
+    )
 with col2:
-    big_metric(label="Total Refugees", value=f"{total_refugees:,}")
+    big_metric_box(label="Total Refugees", value=f"{total_refugees:,}")
 with col3:
-    big_metric(label="Total Asylum Seekers", value=f"{total_asylum_seekers:,}")
+    big_metric_box(label="Total Asylum Seekers", value=f"{total_asylum_seekers:,}")
 
 # Sudan statistics
 
@@ -105,33 +175,40 @@ sum_South_Sudan = df_migration.loc[
     & (df_migration["Country of Origin"] == "Sudan"),
     "Individuals",
 ].sum()
-
+st.markdown("<br>", unsafe_allow_html=True)  # Single line break
+st.markdown("<br>", unsafe_allow_html=True)  # Single line break
+st.markdown("<br>", unsafe_allow_html=True)  # Single line break
 st.subheader("State of Sudan")
 paragraph(
-    "Due to the conflict that arose in Sudan in 2023, the total refugees from Sudan has sky-rocketed"
+    """Due to the conflict that arose in Sudan in 2023, the total refugees from Sudan has sky-rocketed. The following are 
+        figures collected by UNHCR. Note that this figures do not necessarily reflect the current state of migrants but only those who were registered at a given point with the figures likely to decrease 
+    conflicts subside
+    """
 )
 col1, col2, col3 = st.columns(3)
 with col1:
-    big_metric(label=" Total Migrants from Sudan", value=f"{total_sudan_migrants:,}")
+    big_metric_box(
+        label=" Total Migrants from Sudan", value=f"{total_sudan_migrants:,}"
+    )
 with col2:
-    big_metric(label="Sudanese Migrants in Chad", value=f"{sum_Chad:,}")
+    big_metric_box(label="Sudanese Migrants in Chad", value=f"{sum_Chad:,}")
 with col3:
-    big_metric(label="Sudanese Migrants in Ethiopia", value=f"{sum_Ethiopia:,}")
+    big_metric_box(label="Sudanese Migrants in Ethiopia", value=f"{sum_Ethiopia:,}")
 
 col4, col5, col6 = st.columns(3)
 
 with col4:
-    big_metric(
+    big_metric_box(
         label="Sudanese Migrants in Central African Republic",
         value=f"{sum_Central_African_Republic:,}",
     )
 with col5:
-    big_metric(
+    big_metric_box(
         label="Sudanese Migrants in South Sudan",
         value=f"{sum_South_Sudan:,}",
     )
 with col6:
-    big_metric(
+    big_metric_box(
         label="Sudanese Migrants displaced internally",
         value=f"{total_sudan_internally_displaced:,}",
     )
@@ -191,22 +268,19 @@ df_by_date = df_migration.groupby("Date")["Individuals"].sum().to_frame()
 
 # Merge the aggregate dataframe with the location dataframe
 df_map = pd.merge(df_geo, df_aggregate, on="Country")
+df_map = df_map.loc[df_map["Country"] != "Others"]
 df_map_origin = pd.merge(df_geo_origin, df_origin_aggregate, on="Country of Origin")
 
-df_map_origin.head()
+df_map_origin = df_map_origin.loc[
+    (df_map_origin["Country of Origin"] != "Others")
+    & (df_map_origin["Country of Origin"] != "Various")
+]
 
 df_map["size"] = df_map["Individuals"] / 50
 df_map_origin["size"] = df_map_origin["Individuals"] / 100
 
 df_sorted = df_map.sort_values(by="Individuals", ascending=False)
 # Page Layout
-
-# Title of Page
-st.title("Migration Crisis in Africa as reported by UNHCR")
-
-st.markdown(
-    "### Visualization of Migration data from African Countries as collected by UNHCR"
-)
 
 
 st.subheader("Total Migrants in Each Country")
@@ -225,6 +299,7 @@ st.bar_chart(
     filtered_df.set_index("No.").sort_values("Individuals"),
     x="Country",
     y="Individuals",
+    horizontal=True,
 )
 
 st.subheader("Origin of Migrants")
@@ -245,18 +320,17 @@ with st.container():
 
 st.markdown("<br>", unsafe_allow_html=True)
 st.bar_chart(
-    filtered_origin_df,
-    x="Country of Origin",
-    y="Individuals",
+    filtered_origin_df, x="Country of Origin", y="Individuals", horizontal=True
 )
 
-st.write("Total Migrants by Type")
+st.subheader("Total Migrants by Type")
 st.bar_chart(
     df_migrant_type,
 )
 st.subheader("Migration flow accross the year")
 
 st.line_chart(df_by_date)
+
 
 point_layer = pydeck.Layer(
     "ScatterplotLayer",
@@ -279,6 +353,11 @@ point_origin_layer = pydeck.Layer(
     get_radius="size",
 )
 
+df_filtered = df_filtered.loc[
+    (df_filtered["Country of Origin"] != "Others")
+    & (df_filtered["Country of Origin"] != "Various")
+]
+
 
 path_layer = pydeck.Layer(
     "GreatCircleLayer",
@@ -299,11 +378,11 @@ chart = pydeck.Deck(
     [point_layer, point_origin_layer, path_layer],
     initial_view_state=view_state,
     tooltip={
-        "text": "{Country},{Country of Origin}\nLat:{lat} Lon{lon}\nMigrants: {Individuals}"
+        "text": "Country: {Country}\nCountry of Origin: {Country of Origin}\nMigrants: {Individuals}"
     },
 )
 
-st.write("A map visualizer of total migrants in each country")
+st.subheader("A map visualizer of total migrants in each country")
 event = st.pydeck_chart(chart, on_select="rerun", selection_mode="multi-object")
 
 event.selection
